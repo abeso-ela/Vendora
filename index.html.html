@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vendora - Marketplace Global</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --bg: #f9fafb;
+      --card-bg: #fff;
+      --text: #111827;
+      --border: #e5e7eb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); }
+    header {
+      background: var(--primary);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+    nav a {
+      margin: 0 1rem;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    main {
+      padding: 2rem;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      padding: 1rem;
+      transition: 0.2s;
+    }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .card h3 { margin: 0.5rem 0; }
+    .hidden { display: none; }
+    input, select, button, textarea {
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      width: 100%;
+      font-size: 1rem;
+    }
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    button:hover { background-color: #3730a3; }
+    #loginForm, #sellerPanel, #chatBox { max-width: 500px; margin: 2rem auto; }
+    .chat-message {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+    #imagePreview {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      border-radius: 8px;
+      object-fit: cover;
+      max-height: 200px;
+    }
+    #searchInput {
+      max-width: 500px;
+      margin: 1rem auto;
+      display: block;
+    }
+    #chatList {
+      margin: 1rem 0;
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    #chatList button {
+      margin: 0.25rem 0;
+      padding: 0.5rem;
+      width: 100%;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Vendora</h1>
+    <nav>
+      <a onclick="showSection('market')">Marketplace</a>
+      <a onclick="showSection('loginForm')">Iniciar Sesión</a>
+      <a onclick="showSection('sellerPanel')">Vender</a>
+      <a onclick="showSection('chatBox')">Chats</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="market">
+      <h2>Productos Disponibles</h2>
+      <input type="text" id="searchInput" placeholder="Buscar productos..." oninput="filtrarProductos()" />
+      <div class="container" id="productGrid"></div>
+    </section>
+
+    <section id="loginForm" class="hidden">
+      <h2>Iniciar Sesión / Registrarse</h2>
+      <input type="text" id="username" placeholder="Usuario" autocomplete="off" />
+      <button onclick="login()">Entrar</button>
+    </section>
+
+    <section id="sellerPanel" class="hidden">
+      <h2>Panel del Vendedor</h2>
+      <input type="text" id="newName" placeholder="Nombre del producto" autocomplete="off" />
+      <input type="number" id="newPrice" placeholder="Precio" min="0" step="0.01" autocomplete="off" />
+      <input type="file" id="newImageFile" accept="image/*" capture="environment" />
+      <img id="imagePreview" src="" alt="Vista previa de la imagen" />
+      <textarea id="newDesc" placeholder="Descripción del producto"></textarea>
+      <button onclick="addProduct()">Publicar</button>
+
+      <h3>Mis productos</h3>
+      <div id="myProducts"></div>
+    </section>
+
+    <section id="chatBox" class="hidden">
+      <h2>Chat</h2>
+      <div id="chatList"></div>
+      <div id="chatMessages"></div>
+      <textarea id="chatInput" placeholder="Escribe tu mensaje"></textarea>
+      <button onclick="sendMessage()">Enviar</button>
+    </section>
+  </main>
+
+  <footer>
+    &copy; 2025 Vendora Marketplace. Todos los derechos reservados.
+  </footer>
+
+  <script>
+    let user = null;
+    let productos = [];
+    let mensajes = {};
+    let vendedorActual = '';
+
+    const sections = ['market', 'loginForm', 'sellerPanel', 'chatBox'];
+
+    function showSection(id) {
+      sections.forEach(sec => document.getElementById(sec).classList.add('hidden'));
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('hidden');
+        if (id === 'sellerPanel') renderMyProducts();
+        if (id === 'market') renderMarketplace();
+        if (id === 'chatBox') renderChatList();
+      }
+    }
+
+    function login() {
+      const nombre = document.getElementById('username').value.trim();
+      if (!nombre) return alert("Introduce tu nombre de usuario");
+      user = nombre;
+      alert("Sesión iniciada como: " + user);
+      showSection('sellerPanel');
+    }
+
+    function addProduct() {
+      const name = document.getElementById('newName').value.trim();
+      const price = document.getElementById('newPrice').value.trim();
+      const fileInput = document.getElementById('newImageFile');
+      const desc = document.getElementById('newDesc').value.trim();
+
+      if (!(name && price && fileInput.files.length > 0)) {
+        return alert("Rellena todos los campos e incluye una imagen");
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const image = e.target.result;
+
+        productos.push({ name, price, image, desc, seller: user });
+        renderMarketplace();
+        renderMyProducts();
+
+        document.getElementById('newName').value = '';
+        document.getElementById('newPrice').value = '';
+        document.getElementById('newDesc').value = '';
+        fileInput.value = '';
+        document.getElementById('imagePreview').style.display = 'none';
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    function renderMarketplace() {
+      const grid = document.getElementById('productGrid');
+      const filtro = document.getElementById('searchInput').value.trim().toLowerCase();
+      const filtrados = productos.filter(p => p.name.toLowerCase().includes(filtro));
+      grid.innerHTML = filtrados.map((p, i) => `
+        <div class="card">
+          <img src="${p.image}" onclick="openChat('${p.seller}')" alt="${p.name}" />
+          <h3>${p.name}</h3>
+          <p><strong>$${p.price}</strong></p>
+          <p>${p.desc}</p>
+          <p><em>Vendedor: ${p.seller}</em></p>
+        </div>
+      `).join('');
+    }
+
+    function filtrarProductos() {
+      renderMarketplace();
+    }
+
+    function renderMyProducts() {
+      if (!user) return;
+      const panel = document.getElementById('myProducts');
+      const misProductos = productos.filter((p, i) => p.seller === user);
+      panel.innerHTML = misProductos.map((p, i) => `
+        <div class="card">
+          <h3>${p.name}</h3>
+          <p>$${p.price}</p>
+          <button onclick="eliminarProducto(${productos.indexOf(p)})">Eliminar</button>
+        </div>
+      `).join('');
+    }
+
+    function eliminarProducto(index) {
+      productos.splice(index, 1);
+      renderMarketplace();
+      renderMyProducts();
+    }
+
+    function openChat(vendedor) {
+      vendedorActual = vendedor;
+      showSection('chatBox');
+      renderChat();
+    }
+
+    function renderChatList() {
+      const chatList = document.getElementById('chatList');
+      chatList.innerHTML = '<h3>Chats activos:</h3>' + Object.keys(mensajes).map(v => `
+        <button onclick="openChat('${v}')">${v}</button>
+      `).join('');
+    }
+
+    function renderChat() {
+      const chat = mensajes[vendedorActual] || [];
+      const box = document.getElementById('chatMessages');
+      box.innerHTML = chat.map(m => `<div class="chat-message"><strong>${m.de}:</strong> ${m.texto}</div>`).join('');
+      renderChatList();
+    }
+
+    function sendMessage() {
+      const text = document.getElementById('chatInput').value.trim();
+      if (!text) return;
+      if (!mensajes[vendedorActual]) mensajes[vendedorActual] = [];
+      mensajes[vendedorActual].push({ de: user, texto: text });
+      document.getElementById('chatInput').value = '';
+      renderChat();
+    }
+
+    document.getElementById('newImageFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = document.getElementById('imagePreview');
+        img.src = evt.target.result;
+        img.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    productos = [
+      { name: "Zapatillas Nike", price: 80, image: "https://picsum.photos/300?1", desc: "Talla 42, nuevas.", seller: "Ana" },
+      { name: "Smartphone Xiaomi", price: 120, image: "https://picsum.photos/300?2", desc: "Con cargador y caja.", seller: "Carlos" },
+      { name: "Chaqueta de cuero", price: 45, image: "https://picsum.photos/300?3", desc: "Poco uso.", seller: "Lucía" }
+    ];
+    renderMarketplace();
+    showSection('market');
+  </script>
+</body>
+</html>
